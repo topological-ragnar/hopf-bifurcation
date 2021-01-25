@@ -13,11 +13,17 @@ class Sketch {
         this.params = this.gui.addFolder('parameters');
         this.gui.show()
         this.params.a = 0
-        this.params.b = 0
+        this.params.b = -1
+        // this.params.c = 0
         this.params.epsilon = 0.05
         this.gui.add(this.params, 'a', -10, 10, 0.1);
         this.gui.add(this.params, 'b', -10, 10, 0.1);
+        // this.gui.add(this.params, 'c', -10, 10, 0.1);
         this.gui.add(this.params, 'epsilon', 0, 1,0.01);
+        var self = this
+        // var button = { reset: self.resetParticles };
+
+        this.gui.add(this, 'resetParticles');
         
         this.scene = new THREE.Scene()
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
@@ -49,14 +55,17 @@ class Sketch {
         const spritematerial = new THREE.SpriteMaterial({ map: map, color: 0xffffff });
 
         this.sprites = []
-        this.numSprites = 1000
+        this.numSprites = 10000
         this.spacing = 5
-        for(var i = 0; i < this.numSprites; i++){
-            const sprite = new THREE.Sprite(spritematerial);
-            sprite.scale.set(0.1, 0.1, 1)
-            this.scene.add(sprite)
-            this.sprites.push(sprite)
-            sprite.position.x = i/this.spacing-this.numSprites/(this.spacing*2)
+        for(var i = 0; i < 100; i++){
+            for(var j = 0; j< 100; j++){
+                const sprite = new THREE.Sprite(spritematerial);
+                sprite.scale.set(0.1, 0.1, 1)
+                this.scene.add(sprite)
+                this.sprites.push(sprite)
+                sprite.position.x = i / this.spacing - 100 / (this.spacing * 2)
+                sprite.position.y = j / this.spacing - 100 / (this.spacing * 2)
+            }
         }
         // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
@@ -65,28 +74,32 @@ class Sketch {
         var line = new THREE.Line(this.graph, graphMaterial)
         this.scene.add(line)
 
-        var axis = new THREE.BufferGeometry()
-        var points = []
-        for (var i = -50; i < 50; i++) {
-            points.push(new THREE.Vector3(i / 5, 0, 0))
-        }
-        axis.setFromPoints(points)
+        // var axis = new THREE.BufferGeometry()
+        // var points = []
+        // for (var i = -50; i < 50; i++) {
+        //     points.push(new THREE.Vector3(i / 5, 0, 0))
+        // }
+        // axis.setFromPoints(points)
         var axisMaterial = new THREE.LineDashedMaterial({
             color: 0x0fe0ee,
             linewidth: 1,
             scale: 1,
             dashSize: 3,
             gapSize: 2})
-        var axisObject = new THREE.Line(axis,axisMaterial)
-        this.scene.add(axisObject)
+        // var axisObject = new THREE.Line(axis,axisMaterial)
+        // this.scene.add(axisObject)
 
-        var discrim = new THREE.BufferGeometry()
-        points = []
+        this.discrim = new THREE.BufferGeometry()
+        var points = []
         for (var i = -50; i < 50; i++) {
-            points.push(new THREE.Vector3((i / 5)/10-3, (Math.cbrt(27*(i/5)*(i/5)/4))/10-3, 0))
+            points.push(new THREE.Vector3(
+                Math.sqrt(Math.abs(this.params.a)) * Math.cos(i /49 * Math.PI),
+                Math.sqrt(Math.abs(this.params.a)) * Math.sin(i /49 * Math.PI),
+                0
+            ))
         }
-        discrim.setFromPoints(points)
-        var discrimObject = new THREE.Line(discrim, axisMaterial)
+        this.discrim.setFromPoints(points)
+        var discrimObject = new THREE.Line(this.discrim, axisMaterial)
         this.scene.add(discrimObject)
         this.paramPoint = new THREE.Sprite(spritematerial)
         this.paramPoint.scale.set(0.1, 0.1, 1)
@@ -106,38 +119,59 @@ class Sketch {
         }).start()
     }
 
-    potential(x) {
-        return this.params.a + this.params.b * x - x * x * x
+    resetParticles(){
+        // console.log(this.numSprites)
+        for (var i = 0; i < 100; i++) {
+            // console.log('meow')
+            for(var j = 0; j< 100; j++){
+                this.sprites[i*100+j].position.x = i / this.spacing - 100 / (this.spacing * 2)
+                this.sprites[i * 100 + j].position.y = j / this.spacing - 100 / (this.spacing * 2)
+            }
+        }
+    }
+
+    xpotential(x,y) {
+        return this.params.a * x - y + this.params.b * x* (x*x+y*y)
+    }
+
+    ypotential(x,y) {
+        return this.params.a * y + x + this.params.b * y * (x * x + y * y)
     }
 
     setGraph() {
         var points = []
         for (var i = -50; i < 50; i++) {
-            points.push(new THREE.Vector3(i/5,this.potential(i/5),0))
+            points.push(new THREE.Vector3(
+                Math.sqrt(Math.abs(this.params.a)) * Math.cos(i /49 * Math.PI),
+                Math.sqrt(Math.abs(this.params.a)) * Math.sin(i /49 * Math.PI),
+                0
+            ))
         }
-        this.graph.setFromPoints(points)
+        this.discrim.setFromPoints(points)
     }
 
     render() {
         // requestAnimationFrame(this.animate);
-        var dt = this.clock.getDelta();
+        var dt = this.clock.getDelta()*this.params.epsilon;
 
         this.renderer.render(this.scene, this.camera);
 
         this.setGraph()
 
-        this.paramPoint.position.x = this.params.a/10-3
-        this.paramPoint.position.y = this.params.b/ 10 - 3
+        // this.paramPoint.position.x = this.params.a/10-3
+        // this.paramPoint.position.y = this.params.b/ 10 - 3
 
         this.sprites.forEach(sprite => {
 
         })
         for(var i = 0; i < this.numSprites; i++){
             var x = this.sprites[i].position.x
-            this.sprites[i].position.x += dt*this.potential(x)
-            if(Math.abs(this.potential(x))< this.params.epsilon){
-                this.sprites[i].position.x = i / this.spacing - this.numSprites / (this.spacing * 2)
-            }
+            var y = this.sprites[i].position.y
+            this.sprites[i].position.x += dt*this.xpotential(x,y)
+            this.sprites[i].position.y += dt * this.ypotential(x, y)
+            // if(Math.abs(this.potential(x))< this.params.epsilon){
+            //     this.sprites[i].position.x = i / this.spacing - this.numSprites / (this.spacing * 2)
+            // }
         }
         // this.controls.update();
 
