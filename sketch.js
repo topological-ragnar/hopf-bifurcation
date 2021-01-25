@@ -13,13 +13,15 @@ class Sketch {
         this.params = this.gui.addFolder('parameters');
         this.gui.show()
         this.params.a = 0
-        this.params.b = -1
-        // this.params.c = 0
-        this.params.epsilon = 0.05
+        this.params.b = 1
+        this.params.c = 0
+        this.params.d = 0
+        this.params.speed = 0.1
         this.gui.add(this.params, 'a', -10, 10, 0.1);
         this.gui.add(this.params, 'b', -10, 10, 0.1);
-        // this.gui.add(this.params, 'c', -10, 10, 0.1);
-        this.gui.add(this.params, 'epsilon', 0, 1,0.01);
+        this.gui.add(this.params, 'c', -10, 10, 0.1);
+        this.gui.add(this.params, 'd', -10, 10, 0.1);
+        this.gui.add(this.params, 'speed', 0, 1,0.01);
         var self = this
         // var button = { reset: self.resetParticles };
 
@@ -89,21 +91,21 @@ class Sketch {
         // var axisObject = new THREE.Line(axis,axisMaterial)
         // this.scene.add(axisObject)
 
-        this.discrim = new THREE.BufferGeometry()
-        var points = []
-        for (var i = -50; i < 50; i++) {
-            points.push(new THREE.Vector3(
-                Math.sqrt(Math.abs(this.params.a)) * Math.cos(i /49 * Math.PI),
-                Math.sqrt(Math.abs(this.params.a)) * Math.sin(i /49 * Math.PI),
-                0
-            ))
-        }
-        this.discrim.setFromPoints(points)
-        var discrimObject = new THREE.Line(this.discrim, axisMaterial)
-        this.scene.add(discrimObject)
-        this.paramPoint = new THREE.Sprite(spritematerial)
-        this.paramPoint.scale.set(0.1, 0.1, 1)
-        this.scene.add(this.paramPoint)
+        // this.discrim = new THREE.BufferGeometry()
+        // var points = []
+        // for (var i = -50; i < 50; i++) {
+        //     points.push(new THREE.Vector3(
+        //         Math.sqrt(Math.abs(this.params.a/this.params.b)) * Math.cos(i /49 * Math.PI),
+        //         Math.sqrt(Math.abs(this.params.a/this.params.b)) * Math.sin(i /49 * Math.PI),
+        //         0
+        //     ))
+        // }
+        // this.discrim.setFromPoints(points)
+        // this.discrimObject = new THREE.Line(this.discrim, axisMaterial)
+        // this.scene.add(this.discrimObject)
+        // this.paramPoint = new THREE.Sprite(spritematerial)
+        // this.paramPoint.scale.set(0.1, 0.1, 1)
+        // this.scene.add(this.paramPoint)
     }
 
     start() {
@@ -131,32 +133,37 @@ class Sketch {
     }
 
     xpotential(x,y) {
-        return this.params.a * x - y + this.params.b * x* (x*x+y*y)
+        return this.params.d + (this.params.a + this.params.c) * x - this.params.b * y -  x * (x * x + y * y) 
     }
 
     ypotential(x,y) {
-        return this.params.a * y + x + this.params.b * y * (x * x + y * y)
+        return this.params.a * y + this.params.b * x - y * (x * x + y * y)
     }
 
     setGraph() {
         var points = []
         for (var i = -50; i < 50; i++) {
             points.push(new THREE.Vector3(
-                Math.sqrt(Math.abs(this.params.a)) * Math.cos(i /49 * Math.PI),
-                Math.sqrt(Math.abs(this.params.a)) * Math.sin(i /49 * Math.PI),
+                Math.sqrt(Math.abs(this.params.a/this.params.b)) * Math.cos(i /49 * Math.PI),
+                Math.sqrt(Math.abs(this.params.a/this.params.b)) * Math.sin(i /49 * Math.PI),
                 0
             ))
         }
         this.discrim.setFromPoints(points)
+        this.discrimObject.visible = true
     }
 
     render() {
         // requestAnimationFrame(this.animate);
-        var dt = this.clock.getDelta()*this.params.epsilon;
+        var dt = this.clock.getDelta()*this.params.speed;
 
         this.renderer.render(this.scene, this.camera);
 
-        this.setGraph()
+        // if(this.params.b < 0 && this.params.a > 0 || this.params.b > 0 && this.params.a < 0){
+        //     this.setGraph()
+        // } else {
+        //     this.discrimObject.visible = false
+        // }
 
         // this.paramPoint.position.x = this.params.a/10-3
         // this.paramPoint.position.y = this.params.b/ 10 - 3
@@ -169,7 +176,7 @@ class Sketch {
             var y = this.sprites[i].position.y
             this.sprites[i].position.x += dt*this.xpotential(x,y)
             this.sprites[i].position.y += dt * this.ypotential(x, y)
-            // if(Math.abs(this.potential(x))< this.params.epsilon){
+            // if(Math.abs(this.potential(x))< this.params.speed){
             //     this.sprites[i].position.x = i / this.spacing - this.numSprites / (this.spacing * 2)
             // }
         }
