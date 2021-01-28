@@ -4,6 +4,7 @@ OrbitControls = require('three-orbit-controls')
 const dat = require('dat.gui')
 const loop = require('raf-loop')
 const WindowResize = require('three-window-resize')
+const { timers } = require('jquery')
 
 
 class Sketch {
@@ -15,12 +16,12 @@ class Sketch {
         this.params.a = 0
         this.params.b = 1
         this.params.c = 0
-        this.params.d = 0
+        // this.params.d = 0
         this.params.speed = 0.1
         this.gui.add(this.params, 'a', -10, 10, 0.1);
         this.gui.add(this.params, 'b', -10, 10, 0.1);
+        // this.gui.add(this.params, 'c', -10, 10, 0.1);
         this.gui.add(this.params, 'c', -10, 10, 0.1);
-        this.gui.add(this.params, 'd', -10, 10, 0.1);
         this.gui.add(this.params, 'speed', 0, 1,0.01);
         var self = this
         // var button = { reset: self.resetParticles };
@@ -29,10 +30,37 @@ class Sketch {
         
         this.scene = new THREE.Scene()
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-        this.renderer = new THREE.WebGLRenderer()
+        this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true })
+        this.renderer.autoClearColor = false
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.renderer.domElement);
         var windowResize = new WindowResize(this.renderer, this.camera)
+
+
+        var fadeMaterial = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            transparent: true,
+            opacity: 0.03
+        });
+        var fadePlane = new THREE.PlaneBufferGeometry(20, 20);
+        var fadeMesh = new THREE.Mesh(fadePlane, fadeMaterial);
+        // Create Object3D to hold camera and transparent plane
+        var camGroup = new THREE.Object3D();
+        var camera = new THREE.PerspectiveCamera();
+        camGroup.add(camera);
+        camGroup.add(fadeMesh);
+
+        // Put plane in front of camera
+        fadeMesh.position.z = -0.1;
+
+        // Make plane render before particles
+        fadeMesh.renderOrder = -1;
+
+        // Add camGroup to scene
+        this.scene.add(camGroup);
+
+        // Make plane render before particles
+        fadeMesh.renderOrder = -1;
 
         
         this.clock = new THREE.Clock();
@@ -56,25 +84,30 @@ class Sketch {
         const map = new THREE.TextureLoader().load('textures/sprite.png');
         const spritematerial = new THREE.SpriteMaterial({ map: map, color: 0xffffff });
 
+        var graphMaterial = new THREE.LineBasicMaterial({ color: 0xffffff })
+        this.graph = new THREE.BufferGeometry()
+        var line = new THREE.Line(this.graph, graphMaterial)
+        this.scene.add(line)
+
+
         this.sprites = []
-        this.numSprites = 10000
-        this.spacing = 5
-        for(var i = 0; i < 100; i++){
-            for(var j = 0; j< 100; j++){
+        this.trails = []
+        this.trailPoints = []
+        this.numSprites = 20
+        this.spacing = 1
+        for (var i = 0; i < this.numSprites; i++){
+            for (var j = 0; j < this.numSprites; j++){
                 const sprite = new THREE.Sprite(spritematerial);
-                sprite.scale.set(0.1, 0.1, 1)
+                sprite.scale.set(0.03, 0.03, 1)
                 this.scene.add(sprite)
                 this.sprites.push(sprite)
-                sprite.position.x = i / this.spacing - 100 / (this.spacing * 2)
-                sprite.position.y = j / this.spacing - 100 / (this.spacing * 2)
+                sprite.position.x = i / this.spacing - this.numSprites / (this.spacing * 2)
+                sprite.position.y = j / this.spacing - this.numSprites / (this.spacing * 2)
             }
         }
         // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
-        this.graph = new THREE.BufferGeometry()
-        var graphMaterial = new THREE.LineBasicMaterial({ color: 0xffffff })
-        var line = new THREE.Line(this.graph, graphMaterial)
-        this.scene.add(line)
+
 
         // var axis = new THREE.BufferGeometry()
         // var points = []
@@ -123,17 +156,18 @@ class Sketch {
 
     resetParticles(){
         // console.log(this.numSprites)
-        for (var i = 0; i < 100; i++) {
+        for (var i = 0; i < this.numSprites; i++) {
             // console.log('meow')
-            for(var j = 0; j< 100; j++){
-                this.sprites[i*100+j].position.x = i / this.spacing - 100 / (this.spacing * 2)
-                this.sprites[i * 100 + j].position.y = j / this.spacing - 100 / (this.spacing * 2)
+            for (var j = 0; j < this.numSprites; j++){
+                var index = i*this.numSprites+j
+                this.sprites[index].position.x = i / this.spacing - this.numSprites / (this.spacing * 2)
+                this.sprites[index].position.y = j / this.spacing - this.numSprites / (this.spacing * 2)
             }
         }
     }
 
     xpotential(x,y) {
-        return this.params.d + (this.params.a + this.params.c) * x - this.params.b * y -  x * (x * x + y * y) 
+        return this.params.c + (this.params.a) * x - this.params.b * y -  x * (x * x + y * y) 
     }
 
     ypotential(x,y) {
@@ -171,7 +205,7 @@ class Sketch {
         this.sprites.forEach(sprite => {
 
         })
-        for(var i = 0; i < this.numSprites; i++){
+        for (var i = 0; i < this.numSprites * this.numSprites; i++){
             var x = this.sprites[i].position.x
             var y = this.sprites[i].position.y
             this.sprites[i].position.x += dt*this.xpotential(x,y)
@@ -182,7 +216,7 @@ class Sketch {
         }
         // this.controls.update();
 
-
+        // this.updateTrails()
 
         
     }
