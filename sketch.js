@@ -27,41 +27,40 @@ class Sketch {
         // var button = { reset: self.resetParticles };
 
         this.gui.add(this, 'resetParticles');
+        this.gui.add(this, 'toggleFade');
         
+        this.fade = 0.03
+
         this.scene = new THREE.Scene()
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+        // this.projector = new THREE.Projector()
         this.renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true })
         this.renderer.autoClearColor = false
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.renderer.domElement);
         var windowResize = new WindowResize(this.renderer, this.camera)
 
-
         var fadeMaterial = new THREE.MeshBasicMaterial({
             color: 0x000000,
             transparent: true,
-            opacity: 0.03
+            opacity: this.fade
         });
         var fadePlane = new THREE.PlaneBufferGeometry(20, 20);
-        var fadeMesh = new THREE.Mesh(fadePlane, fadeMaterial);
+        this.fadeMesh = new THREE.Mesh(fadePlane, fadeMaterial);
         // Create Object3D to hold camera and transparent plane
         var camGroup = new THREE.Object3D();
         var camera = new THREE.PerspectiveCamera();
         camGroup.add(camera);
-        camGroup.add(fadeMesh);
+        camGroup.add(this.fadeMesh);
 
         // Put plane in front of camera
-        fadeMesh.position.z = -0.1;
+        this.fadeMesh.position.z = -0.1;
 
         // Make plane render before particles
-        fadeMesh.renderOrder = -1;
+        this.fadeMesh.renderOrder = -1;
 
         // Add camGroup to scene
         this.scene.add(camGroup);
-
-        // Make plane render before particles
-        fadeMesh.renderOrder = -1;
-
         
         this.clock = new THREE.Clock();
         this.clock.getDelta();
@@ -94,7 +93,7 @@ class Sketch {
         this.trails = []
         this.trailPoints = []
         this.numSprites = 20
-        this.spacing = 1
+        this.spacing = 3
         for (var i = 0; i < this.numSprites; i++){
             for (var j = 0; j < this.numSprites; j++){
                 const sprite = new THREE.Sprite(spritematerial);
@@ -103,8 +102,10 @@ class Sketch {
                 this.sprites.push(sprite)
                 sprite.position.x = i / this.spacing - this.numSprites / (this.spacing * 2)
                 sprite.position.y = j / this.spacing - this.numSprites / (this.spacing * 2)
+                sprite.position.z = 0
             }
         }
+        this.nextSprite = 0
         // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
 
@@ -139,6 +140,31 @@ class Sketch {
         // this.paramPoint = new THREE.Sprite(spritematerial)
         // this.paramPoint.scale.set(0.1, 0.1, 1)
         // this.scene.add(this.paramPoint)
+
+        document.addEventListener('mousedown', (event) => {
+
+            event.preventDefault();
+
+            // console.log(1 - 2 * event.clientY / window.innerHeight)
+
+            var vector = new THREE.Vector3(
+                2 * event.clientX / window.innerWidth - 1,
+                 1 - 2 * event.clientY / window.innerHeight,
+                  0.5
+                  ).unproject(self.camera);
+
+            // vector.normalize()
+            vector.sub(self.camera.position).normalize()
+
+            vector.multiplyScalar(-5/vector.z)
+                
+            self.sprites[self.nextSprite].position.x = vector.x
+            self.sprites[self.nextSprite].position.y = vector.y
+            self.nextSprite++
+            self.nextSprite = self.nextSprite % (self.numSprites * self.numSprites)
+        }
+            , false);
+
     }
 
     start() {
@@ -152,6 +178,15 @@ class Sketch {
             //     this.environment.controls.update(dt)
             // }
         }).start()
+    }
+
+    toggleFade(){
+        if (this.fade > 0) {
+            this.fade = 0
+        } else {
+            this.fade = 0.03
+        }
+        this.fadeMesh.material.opacity = this.fade
     }
 
     resetParticles(){
